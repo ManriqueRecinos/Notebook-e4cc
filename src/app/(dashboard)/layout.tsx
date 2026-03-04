@@ -1,28 +1,38 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import './dashboard.css';
+import './visual-builder.css';
 
 export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const { user, logout } = useAuth();
+    const { user, logout, token } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [collapsed, setCollapsed] = useState(false);
+    const [workspaces, setWorkspaces] = useState<any[]>([]);
     const pathname = usePathname();
     const router = useRouter();
+
+    useEffect(() => {
+        if (token) {
+            apiGet<any[]>('/api/workspaces')
+                .then(setWorkspaces)
+                .catch(err => console.error('Failed to load workspaces:', err));
+        }
+    }, [token, pathname]);
 
     const initial = user?.name?.charAt(0).toUpperCase() || 'U';
 
     const navItems = [
         { icon: '🏠', label: 'Dashboard', href: '/dashboard' },
-        { icon: '📚', label: 'Workspaces', href: '/dashboard', badge: '3' },
+        { icon: '📚', label: 'Workspaces', href: '/dashboard', badge: workspaces.length.toString() },
     ];
 
     return (
@@ -57,21 +67,25 @@ export default function DashboardLayout({
 
                     <div className="sidebar-section">
                         <div className="sidebar-section-title">Recent Workspaces</div>
-                        {['English Study Group', 'Dev Team Notes', 'Personal Learning'].map((ws, i) => (
-                            <button key={i} className="sidebar-item" onClick={() => router.push(`/workspace/ws-${i + 1}`)}>
+                        {workspaces.slice(0, 5).map((ws) => (
+                            <button
+                                key={ws.id}
+                                className={`sidebar-item ${pathname.includes(ws.id) ? 'active' : ''}`}
+                                onClick={() => router.push(`/workspace/${ws.id}`)}
+                            >
                                 <span className="sidebar-item-icon">📂</span>
-                                {ws}
+                                {ws.name}
                             </button>
                         ))}
                     </div>
 
                     <div className="sidebar-section">
                         <div className="sidebar-section-title">Tools</div>
-                        <button className="sidebar-item" onClick={() => { }}>
+                        <button className="sidebar-item" onClick={() => router.push('/dashboard')}>
                             <span className="sidebar-item-icon">📖</span>
                             Vocabulary
                         </button>
-                        <button className="sidebar-item" onClick={() => { }}>
+                        <button className="sidebar-item" onClick={() => router.push('/dashboard')}>
                             <span className="sidebar-item-icon">📊</span>
                             Timeline
                         </button>

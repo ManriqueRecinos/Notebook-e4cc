@@ -1,16 +1,8 @@
 'use client';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import { apiGet } from '@/lib/api';
 import type { ActivityLog } from '@/types';
-
-const mockLogs: ActivityLog[] = [
-    { id: 'l1', workspace_id: 'ws-1', notebook_id: 'nb-1', user_id: 'u1', entity_type: 'block', entity_id: 'b1', action: 'UPDATE', old_data: { text: 'Welcome' }, new_data: { text: 'Welcome to Grammar Fundamentals' }, created_at: '2026-03-04T14:30:00Z', user_name: 'Admin' },
-    { id: 'l2', workspace_id: 'ws-1', notebook_id: 'nb-1', user_id: 'u2', entity_type: 'vocabulary', entity_id: 'v6', action: 'INSERT', old_data: null, new_data: { word_english: 'forgive', word_spanish: 'perdonar' }, created_at: '2026-03-04T13:15:00Z', user_name: 'Maria Garcia' },
-    { id: 'l3', workspace_id: 'ws-1', notebook_id: 'nb-2', user_id: 'u3', entity_type: 'notebook', entity_id: 'nb-2', action: 'UPDATE', old_data: { title: 'Verbs' }, new_data: { title: 'Irregular Verbs' }, created_at: '2026-03-04T11:00:00Z', user_name: 'Carlos Lopez' },
-    { id: 'l4', workspace_id: 'ws-1', notebook_id: 'nb-3', user_id: 'u1', entity_type: 'section', entity_id: 's5', action: 'INSERT', old_data: null, new_data: { title: 'Advanced Passages', type: 'notes' }, created_at: '2026-03-03T16:45:00Z', user_name: 'Admin' },
-    { id: 'l5', workspace_id: 'ws-1', notebook_id: 'nb-1', user_id: 'u4', entity_type: 'block', entity_id: 'b10', action: 'DELETE', old_data: { text: 'Draft note' }, new_data: null, created_at: '2026-03-03T14:20:00Z', user_name: 'Ana Martinez' },
-    { id: 'l6', workspace_id: 'ws-1', notebook_id: null, user_id: 'u1', entity_type: 'workspace_member', entity_id: 'm5', action: 'INSERT', old_data: null, new_data: { user_name: 'Pedro Ruiz', role: 'VIEWER' }, created_at: '2026-03-02T10:00:00Z', user_name: 'Admin' },
-    { id: 'l7', workspace_id: 'ws-1', notebook_id: 'nb-4', user_id: 'u3', entity_type: 'notebook', entity_id: 'nb-4', action: 'INSERT', old_data: null, new_data: { title: 'Writing Exercises' }, created_at: '2026-03-01T09:30:00Z', user_name: 'Carlos Lopez' },
-];
 
 function actionLabel(action: string, entity: string) {
     const labels: Record<string, Record<string, string>> = {
@@ -41,6 +33,25 @@ function formatTime(iso: string) {
 
 export default function TimelinePage() {
     const params = useParams();
+    const workspaceId = params.id as string;
+    const [logs, setLogs] = useState<ActivityLog[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchLogs = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await apiGet<ActivityLog[]>('/api/activity', { workspace_id: workspaceId });
+            setLogs(data);
+        } catch (err) {
+            console.error('Failed to load activity logs:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [workspaceId]);
+
+    useEffect(() => {
+        fetchLogs();
+    }, [fetchLogs]);
 
     return (
         <>
@@ -49,32 +60,42 @@ export default function TimelinePage() {
                 <p className="page-desc">Track all changes and updates in this workspace.</p>
             </div>
 
-            <div className="timeline">
-                {mockLogs.map(log => (
-                    <div key={log.id} className="timeline-item">
-                        <div className={`timeline-dot ${dotClass(log.action)}`} />
-                        <div className="timeline-content">
-                            <div className="timeline-action">
-                                <strong>{log.user_name}</strong> {actionLabel(log.action, log.entity_type)}
-                            </div>
-                            <div className="timeline-meta">
-                                <span>{formatTime(log.created_at)}</span>
-                                <span>·</span>
-                                <span>{log.entity_type}</span>
-                            </div>
-                            {log.new_data && (
-                                <div className="timeline-entity">
-                                    {Object.entries(log.new_data).map(([k, v]) => (
-                                        <span key={k} style={{ marginRight: '12px' }}>
-                                            <strong>{k}:</strong> {String(v)}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
+            {loading ? (
+                <div style={{ padding: '20px', textAlign: 'center' }}>Loading activity logs...</div>
+            ) : (
+                <div className="timeline">
+                    {logs.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>
+                            No activity recorded yet.
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ) : (
+                        logs.map(log => (
+                            <div key={log.id} className="timeline-item animate-fade-in">
+                                <div className={`timeline-dot ${dotClass(log.action)}`} />
+                                <div className="timeline-content">
+                                    <div className="timeline-action">
+                                        <strong>{log.user_name}</strong> {actionLabel(log.action, log.entity_type)}
+                                    </div>
+                                    <div className="timeline-meta">
+                                        <span>{formatTime(log.created_at)}</span>
+                                        <span>·</span>
+                                        <span>{log.entity_type}</span>
+                                    </div>
+                                    {log.new_data && (
+                                        <div className="timeline-entity">
+                                            {Object.entries(log.new_data).map(([k, v]) => (
+                                                <span key={k} style={{ marginRight: '12px' }}>
+                                                    <strong>{k}:</strong> {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
         </>
     );
 }

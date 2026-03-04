@@ -25,9 +25,9 @@ export async function POST(req: NextRequest) {
 
         // INSERT INTO users
         const users = await sql`
-      INSERT INTO users (name, password_hash)
-      VALUES (${name}, ${password_hash})
-      RETURNING id, name, created_at
+      INSERT INTO users (name, password_hash, level)
+      VALUES (${name}, ${password_hash}, 'BASIC 0')
+      RETURNING id, name, level, created_at
     `;
         const user = users[0];
 

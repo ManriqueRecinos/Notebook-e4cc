@@ -6,6 +6,7 @@
 export interface User {
     id: string;
     name: string;
+    level: string; // BASIC 0, BASIC 1, etc.
     created_at: string;
     updated_at: string;
 }
@@ -24,6 +25,7 @@ export interface Workspace {
     id: string;
     name: string;
     owner_id: string;
+    level: string; // BASIC 0, BASIC 1, etc.
     created_at: string;
 }
 
@@ -36,6 +38,7 @@ export interface WorkspaceMember {
     role: MemberRole;
     created_at: string;
     user_name?: string;
+    user_level?: string;
 }
 
 export interface Notebook {
@@ -60,15 +63,53 @@ export interface Section {
     created_at: string;
 }
 
-export type BlockType = 'text' | 'heading' | 'checklist' | 'image' | 'sticker';
+export enum BlockType {
+    TEXT = 'text',
+    IMAGE = 'image',
+    CODE = 'code',
+    CALLOUT = 'callout',
+    DIVIDER = 'divider',
+    TODO = 'todo',
+    SHAPE = 'shape',
+    STICKER = 'sticker',
+    AUDIO = 'audio',
+    CONTAINER = 'container',
+    SECTION_BG = 'section_bg',
+}
 
 export interface Block {
     id: string;
     section_id: string;
     block_type: BlockType;
-    content: Record<string, unknown>;
+    content: {
+        text?: string;
+        url?: string;
+        checked?: boolean;
+        language?: string;
+        caption?: string;
+        icon?: string;
+        style?: {
+            x?: number;
+            y?: number;
+            w?: number;
+            h?: number;
+            rotate?: number;
+            z?: number;
+        };
+        theme?: {
+            color?: string;
+            bgColor?: string;
+            fontSize?: string;
+            fontFamily?: string;
+            align?: 'left' | 'center' | 'right';
+        };
+        layout?: {
+            columns?: number;
+            padding?: string;
+            margin?: string;
+        };
+    };
     position: number;
-    created_by: string;
     created_at: string;
     updated_at: string;
 }

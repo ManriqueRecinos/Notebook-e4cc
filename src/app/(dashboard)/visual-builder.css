@@ -1,0 +1,329 @@
+/* ============================
+   Lexora Visual Builder Core
+   ============================ */
+
+.visual-builder-root {
+    display: flex;
+    height: calc(100vh - 64px);
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+
+/* ---------- Side Panels ---------- */
+.vb-panel {
+    width: 280px;
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+    transition: width 0.3s ease;
+}
+
+.vb-panel-right {
+    border-right: none;
+    border-left: 1px solid var(--border);
+}
+
+.vb-panel-header {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-tertiary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.vb-panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-4);
+}
+
+/* ---------- Canvas Area ---------- */
+.vb-canvas-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    padding: var(--space-10);
+    display: flex;
+    justify-content: center;
+    background-image: radial-gradient(var(--border) 1px, transparent 1px);
+    background-size: 32px 32px;
+}
+
+.vb-page-canvas {
+    background: white;
+    box-shadow: var(--shadow-xl);
+    min-height: 1056px;
+    width: 816px;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme='dark'] .vb-page-canvas {
+    background: #1e1e1e;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Editor Modes ---------- */
+.vb-mode-word .vb-page-canvas {
+    padding: var(--space-10);
+}
+
+.vb-mode-canva .vb-page-canvas {
+    overflow: visible;
+}
+
+/* ---------- Block Interactions ---------- */
+.vb-block {
+    position: relative;
+    cursor: pointer;
+    transition: outline 0.1s ease;
+}
+
+.vb-block.active {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.vb-block-handle {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    display: none;
+    z-index: 10;
+}
+
+.vb-block.active .vb-block-handle {
+    display: block;
+}
+
+/* Resizer Handles (Canva Mode) */
+.vb-resizer {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: white;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    z-index: 15;
+    display: none;
+}
+
+.vb-block.active .vb-resizer {
+    display: block;
+}
+
+/* Member Cursor (Multiplayer) */
+.vb-cursor {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.vb-cursor-pointer {
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 12px solid var(--cursor-color, var(--primary));
+    transform: rotate(-45deg);
+}
+
+.vb-cursor-label {
+    background: var(--cursor-color, var(--primary));
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* ---------- Toolbars ---------- */
+.vb-toolbar-floating {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-md);
+    padding: var(--space-2);
+    display: flex;
+    gap: var(--space-2);
+    z-index: 50;
+    backdrop-filter: blur(8px);
+}
+
+.toolbar-btn {
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+}
+
+.toolbar-btn:hover {
+    background: var(--bg-tertiary);
+}
+
+/* ---------- Plus Button Insertion ---------- */
+.vb-plus-target {
+    height: 12px;
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    cursor: cell;
+}
+
+.vb-plus-target:hover {
+    opacity: 1;
+}
+
+.vb-plus-btn {
+    width: 24px;
+    height: 24px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: var(--shadow-md);
+    transform: scale(0.8);
+    transition: transform 0.2s;
+}
+
+.vb-plus-btn:hover {
+    transform: scale(1.1);
+}
+
+/* ---------- Slash Menu ---------- */
+.vb-slash-menu {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    padding: 8px;
+    min-width: 180px;
+    backdrop-filter: blur(10px);
+    animation: fadeInScale 0.2s ease-out;
+}
+
+.slash-menu-item {
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.slash-menu-item:hover {
+    background: var(--bg-tertiary);
+    transform: translateX(4px);
+}
+
+.slash-menu-close {
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-align: right;
+    cursor: pointer;
+    border-top: 1px solid var(--border-subtle);
+    margin-top: 4px;
+}
+
+/* ---------- Media Blocks ---------- */
+.vb-audio-block {
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Empty Canvas State ---------- */
+.vb-empty-canvas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 600px;
+    height: 400px;
+    background: var(--bg-primary);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: center;
+    padding: var(--space-8);
+    margin-top: 60px;
+}
+
+.vb-empty-canvas:hover {
+    border-color: var(--primary);
+    background: var(--bg-secondary);
+    transform: translateY(-8px) scale(1.02);
+}
+
+.pulse-icon {
+    font-size: 64px;
+    margin-bottom: var(--space-6);
+    animation: vb-pulse 2s infinite ease-in-out;
+}
+
+@keyframes vb-pulse {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 0px var(--primary));
+    }
+
+    50% {
+        transform: scale(1.15);
+        filter: drop-shadow(0 0 15px var(--primary));
+        opacity: 0.9;
+    }
+
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 0px var(--primary));
+    }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* ---------- Badges ---------- */
+.badge-sm {
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 12px;
+}
