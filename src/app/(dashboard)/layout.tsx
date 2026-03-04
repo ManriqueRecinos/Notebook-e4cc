@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { apiGet } from '@/lib/api';
 import './dashboard.css';
 
 export default function DashboardLayout({

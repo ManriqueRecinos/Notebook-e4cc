@@ -1,27 +1,63 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import type { Workspace } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { apiGet, apiPost } from '@/lib/api';
 
-// Simulated data
-const mockWorkspaces: (Workspace & { notebooks_count: number; members_count: number })[] = [
-    {
-        id: 'ws-1', name: 'English Study Group', owner_id: 'u1',
-        created_at: '2026-02-15T10:00:00Z', notebooks_count: 8, members_count: 5,
-    },
-    {
-        id: 'ws-2', name: 'Dev Team Notes', owner_id: 'u1',
-        created_at: '2026-01-20T08:00:00Z', notebooks_count: 12, members_count: 3,
-    },
-    {
-        id: 'ws-3', name: 'Personal Learning', owner_id: 'u1',
-        created_at: '2026-03-01T12:00:00Z', notebooks_count: 4, members_count: 1,
-    },
-];
+interface WorkspaceRow {
+    id: string;
+    name: string;
+    owner_id: string;
+    created_at: string;
+    role: string;
+    notebooks_count: number;
+    members_count: number;
+}
 
 export default function DashboardPage() {
+    const { user, token } = useAuth();
+    const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
     const [newName, setNewName] = useState('');
+    const [creating, setCreating] = useState(false);
+    const [error, setError] = useState('');
+
+    const fetchWorkspaces = useCallback(async () => {
+        if (!token) return;
+        try {
+            setLoading(true);
+            const data = await apiGet<WorkspaceRow[]>('/api/workspaces');
+            setWorkspaces(data);
+        } catch (err) {
+            console.error('Failed to load workspaces:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        fetchWorkspaces();
+    }, [fetchWorkspaces]);
+
+    const handleCreate = async () => {
+        if (!newName.trim()) return;
+        setCreating(true);
+        setError('');
+        try {
+            await apiPost('/api/workspaces', { name: newName.trim() });
+            setNewName('');
+            setShowCreate(false);
+            await fetchWorkspaces();
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to create workspace');
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const totalNotebooks = workspaces.reduce((sum, w) => sum + (w.notebooks_count || 0), 0);
+    const totalMembers = workspaces.reduce((sum, w) => sum + (w.members_count || 0), 0);
 
     return (
         <>
@@ -29,23 +65,15 @@ export default function DashboardPage() {
             <div className="stats-row stagger-children">
                 <div className="stat-card animate-fade-in">
                     <div className="stat-card-label">Workspaces</div>
-                    <div className="stat-card-value gradient-text">3</div>
-                    <div className="stat-card-change">+1 this month</div>
+                    <div className="stat-card-value gradient-text">{workspaces.length}</div>
                 </div>
                 <div className="stat-card animate-fade-in">
                     <div className="stat-card-label">Notebooks</div>
-                    <div className="stat-card-value gradient-text">24</div>
-                    <div className="stat-card-change">+5 this week</div>
-                </div>
-                <div className="stat-card animate-fade-in">
-                    <div className="stat-card-label">Vocabulary Words</div>
-                    <div className="stat-card-value gradient-text">156</div>
-                    <div className="stat-card-change">+12 today</div>
+                    <div className="stat-card-value gradient-text">{totalNotebooks}</div>
                 </div>
                 <div className="stat-card animate-fade-in">
                     <div className="stat-card-label">Collaborators</div>
-                    <div className="stat-card-value gradient-text">9</div>
-                    <div className="stat-card-change">Active now</div>
+                    <div className="stat-card-value gradient-text">{totalMembers}</div>
                 </div>
             </div>
 
@@ -59,34 +87,46 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            <div className="dashboard-grid stagger-children">
-                {mockWorkspaces.map(ws => (
-                    <Link key={ws.id} href={`/workspace/${ws.id}`}>
-                        <div className="workspace-card animate-slide-up">
-                            <div className="workspace-card-header">
-                                <div className="workspace-card-icon">📚</div>
-                                <span className="badge badge-owner">Owner</span>
-                            </div>
-                            <h3>{ws.name}</h3>
-                            <p className="workspace-card-meta">
-                                Created {new Date(ws.created_at).toLocaleDateString()}
-                            </p>
-                            <div className="workspace-card-stats">
-                                <span className="workspace-card-stat">
-                                    📝 <strong>{ws.notebooks_count}</strong> notebooks
-                                </span>
-                                <span className="workspace-card-stat">
-                                    👥 <strong>{ws.members_count}</strong> members
-                                </span>
-                            </div>
+            {loading ? (
+                <div className="dashboard-grid">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="workspace-card" style={{ minHeight: 180 }}>
+                            <div className="skeleton" style={{ height: 16, width: '60%', marginBottom: 12 }} />
+                            <div className="skeleton" style={{ height: 12, width: '40%', marginBottom: 24 }} />
+                            <div className="skeleton" style={{ height: 12, width: '80%' }} />
                         </div>
-                    </Link>
-                ))}
-                <div className="create-card" onClick={() => setShowCreate(true)}>
-                    <div className="create-card-icon">+</div>
-                    <span>Create Workspace</span>
+                    ))}
                 </div>
-            </div>
+            ) : (
+                <div className="dashboard-grid stagger-children">
+                    {workspaces.map(ws => (
+                        <Link key={ws.id} href={`/workspace/${ws.id}`}>
+                            <div className="workspace-card animate-slide-up">
+                                <div className="workspace-card-header">
+                                    <div className="workspace-card-icon">📚</div>
+                                    <span className={`badge badge-${ws.role?.toLowerCase() || 'owner'}`}>{ws.role || 'OWNER'}</span>
+                                </div>
+                                <h3>{ws.name}</h3>
+                                <p className="workspace-card-meta">
+                                    Created {new Date(ws.created_at).toLocaleDateString()}
+                                </p>
+                                <div className="workspace-card-stats">
+                                    <span className="workspace-card-stat">
+                                        📝 <strong>{ws.notebooks_count || 0}</strong> notebooks
+                                    </span>
+                                    <span className="workspace-card-stat">
+                                        👥 <strong>{ws.members_count || 0}</strong> members
+                                    </span>
+                                </div>
+                            </div>
+                        </Link>
+                    ))}
+                    <div className="create-card" onClick={() => setShowCreate(true)}>
+                        <div className="create-card-icon">+</div>
+                        <span>Create Workspace</span>
+                    </div>
+                </div>
+            )}
 
             {/* Create Modal */}
             {showCreate && (
@@ -95,6 +135,7 @@ export default function DashboardPage() {
                         <h2 style={{ marginBottom: 'var(--space-5)', fontFamily: 'var(--font-display)' }}>
                             Create Workspace
                         </h2>
+                        {error && <div className="auth-error" style={{ marginBottom: 'var(--space-4)' }}>{error}</div>}
                         <div className="input-group" style={{ marginBottom: 'var(--space-5)' }}>
                             <label className="input-label" htmlFor="ws-name">Workspace Name</label>
                             <input
@@ -103,12 +144,16 @@ export default function DashboardPage() {
                                 placeholder="e.g. English Study Group"
                                 value={newName}
                                 onChange={e => setNewName(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleCreate()}
                                 style={{ width: '100%' }}
+                                autoFocus
                             />
                         </div>
                         <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
                             <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={() => setShowCreate(false)}>Create</button>
+                            <button className="btn btn-primary" onClick={handleCreate} disabled={creating}>
+                                {creating ? 'Creating...' : 'Create'}
+                            </button>
                         </div>
                     </div>
                 </div>
