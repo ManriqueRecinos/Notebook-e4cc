@@ -97,7 +97,12 @@ export default function VisualBuilderPage() {
         // If no section provided or sections array is empty, create a default section
         if (!targetSectionId || !sections.length) {
             try {
-                const newSec = await apiPost<Section>('/api/sections', { notebook_id: notebookId, title: 'Main Section', position: 0 });
+                const newSec = await apiPost<Section>('/api/sections', {
+                    notebook_id: notebookId,
+                    title: 'Main Section',
+                    type: 'notes', // Added required field
+                    position: 0
+                });
                 targetSectionId = newSec.id;
                 // Add the section locally so blocks can be added to it
                 setSections([{ ...newSec, blocks: [] }]);
@@ -122,15 +127,34 @@ export default function VisualBuilderPage() {
 
             setActiveBlockId(newBlock.id);
             setShowSlashMenu(null);
+
+            // Auto-focus new text blocks
+            if (type === 'text') {
+                setTimeout(() => {
+                    const el = document.querySelector(`[data-block-id="${newBlock.id}"] .block-text-content`);
+                    if (el instanceof HTMLElement) el.focus();
+                }, 100);
+            }
         } catch (err) {
             console.error('Failed to add block:', err);
         }
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, sectionId: string | undefined, position: number) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    const handleDeleteBlock = async (blockId: string) => {
+        if (isPreview || userRole === 'VIEWER') return;
+        try {
+            await apiDelete(`/api/blocks/${blockId}`);
+            setSections(prev => prev.map(s => ({
+                ...s,
+                blocks: s.blocks.filter(b => b.id !== blockId)
+            })));
+            if (activeBlockId === blockId) setActiveBlockId(null);
+        } catch (err) {
+            console.error('Failed to delete block:', err);
+        }
+    };
 
+    const handleFileUpload = async (file: File, sectionId: string | undefined, position: number, blockType?: string) => {
         const formData = new FormData();
         formData.append('file', file);
 
@@ -141,11 +165,50 @@ export default function VisualBuilderPage() {
             });
             const data = await res.json();
 
-            const type = file.type.startsWith('audio') ? 'audio' : 'image';
+            const type = blockType || (file.type.startsWith('audio') ? 'audio' : 'image');
             await handleAddBlock(sectionId, type, position, { url: data.url });
         } catch (err) {
             console.error('Upload failed:', err);
         }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, sectionId: string | undefined, position: number, blockType?: string) => {
+        const file = e.target.files?.[0];
+        if (file) handleFileUpload(file, sectionId, position, blockType);
+    };
+
+    const handlePaste = async (e: React.ClipboardEvent) => {
+        if (isPreview) return;
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1 || items[i].type.indexOf('audio') !== -1) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    e.preventDefault();
+                    // Insert at current position or end of first section
+                    const currentSection = sections.find(s => s.blocks.some(b => b.id === activeBlockId)) || sections[0];
+                    const targetSec = currentSection?.id;
+                    const pos = currentSection ? currentSection.blocks.length : 0;
+                    handleFileUpload(file, targetSec, pos);
+                }
+            }
+        }
+    };
+
+    const handleDrop = async (e: React.DragEvent) => {
+        if (isPreview) return;
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer.files);
+        // Target current active section or first section
+        const currentSection = sections.find(s => s.blocks.some(b => b.id === activeBlockId)) || sections[0];
+        const targetSec = currentSection?.id;
+        const pos = currentSection ? currentSection.blocks.length : 0;
+
+        files.forEach(file => {
+            if (file.type.startsWith('image/') || file.type.startsWith('audio/')) {
+                handleFileUpload(file, targetSec, pos);
+            }
+        });
     };
 
     const handleDragStart = (e: React.MouseEvent, blockId: string) => {
@@ -190,7 +253,14 @@ export default function VisualBuilderPage() {
     const canEdit = (userRole === 'OWNER' || userRole === 'EDITOR') && !isPreview;
 
     return (
-        <div className={`visual-builder-root vb-mode-${mode}`} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}>
+        <div
+            className={`visual-builder-root vb-mode-${mode}`}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onPaste={handlePaste}
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+        >
             {/* Left Panel: Library */}
             {!isPreview && (
                 <aside className="vb-panel">
@@ -205,11 +275,11 @@ export default function VisualBuilderPage() {
                         <div className="stagger-children">
                             <label className="sidebar-item" style={{ cursor: 'pointer' }}>
                                 🎵 Upload Sound
-                                <input type="file" accept="audio/*" hidden onChange={(e) => handleFileUpload(e, sections[0]?.id, sections[0]?.blocks.length || 0)} />
+                                <input type="file" accept="audio/*" hidden onChange={(e) => handleFileChange(e, sections[0]?.id, sections[0]?.blocks.length || 0, 'audio')} />
                             </label>
                             <label className="sidebar-item" style={{ cursor: 'pointer' }}>
                                 ✨ Upload Sticker
-                                <input type="file" accept="image/*" hidden onChange={(e) => handleFileUpload(e, sections[0]?.id, sections[0]?.blocks.length || 0)} />
+                                <input type="file" accept="image/*" hidden onChange={(e) => handleFileChange(e, sections[0]?.id, sections[0]?.blocks.length || 0, 'sticker')} />
                             </label>
                         </div>
                         <div className="sidebar-section-title" style={{ marginTop: 20 }}>Emoji</div>
@@ -288,29 +358,49 @@ export default function VisualBuilderPage() {
                                     >
                                         {canEdit && mode === 'canva' && <div className="vb-block-handle">⠿</div>}
 
-                                        {block.block_type === 'text' && (
-                                            <div
-                                                contentEditable={canEdit}
-                                                className="block-text-content"
-                                                onBlur={(e) => handleUpdateBlock(block.id, { text: e.currentTarget.innerHTML })}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === '/') {
-                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                        setShowSlashMenu({ x: rect.left, y: rect.bottom, sectionId: section.id, position: idx + 1 });
-                                                    }
-                                                }}
-                                                style={{ color: block.content.theme?.color || 'inherit', minHeight: '1em' }}
-                                                dangerouslySetInnerHTML={{ __html: block.content.text || '' }}
-                                            />
-                                        )}
-                                        {block.block_type === 'image' && (
-                                            <img src={block.content.url || '/placeholder.png'} className="vb-image" alt="Visual" draggable={false} />
-                                        )}
-                                        {block.block_type === 'audio' && (
-                                            <div className="vb-audio-block">
-                                                <audio src={block.content.url} controls style={{ width: '100%' }} />
+                                        {/* Block Controls (Trash) */}
+                                        {canEdit && !isPreview && (
+                                            <div className="vb-block-actions">
+                                                <button className="vb-action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteBlock(block.id); }}>🗑️</button>
                                             </div>
                                         )}
+
+                                        <div className="vb-block-content-wrapper" data-block-id={block.id}>
+                                            {block.block_type === 'text' && (
+                                                <div
+                                                    contentEditable={canEdit}
+                                                    className="block-text-content"
+                                                    onBlur={(e) => handleUpdateBlock(block.id, { text: e.currentTarget.innerHTML })}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '/') {
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            setShowSlashMenu({ x: rect.left, y: rect.bottom, sectionId: section.id, position: idx + 1 });
+                                                        }
+                                                    }}
+                                                    style={{ color: block.content.theme?.color || 'inherit', minHeight: '1.2em' }}
+                                                    dangerouslySetInnerHTML={{ __html: block.content.text || '' }}
+                                                />
+                                            )}
+                                            {block.block_type === 'image' && (
+                                                <div className="vb-image-container">
+                                                    <img src={block.content.url || '/placeholder.png'} className="vb-image" alt="Visual" draggable={false} />
+                                                </div>
+                                            )}
+                                            {block.block_type === 'sticker' && (
+                                                <div className="vb-sticker-container">
+                                                    <img src={block.content.url || '/placeholder.png'} className="vb-sticker" alt="Sticker" draggable={false} style={{ maxWidth: '150px', margin: '0 auto' }} />
+                                                </div>
+                                            )}
+                                            {block.block_type === 'audio' && (
+                                                <div className="vb-audio-block premium">
+                                                    <div className="audio-visualizer">
+                                                        <div className="pulse-dot" />
+                                                        <span className="audio-label">Audio Clip</span>
+                                                    </div>
+                                                    <audio src={block.content.url} controls style={{ width: '100%' }} />
+                                                </div>
+                                            )}
+                                        </div>
 
                                         {mode === 'canva' && canEdit && (
                                             <div className="vb-resizer" style={{ bottom: -4, right: -4 }} />

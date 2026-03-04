@@ -264,7 +264,7 @@ export default function WorkspacePage() {
                         <h2 style={{ marginBottom: 'var(--space-5)', fontFamily: 'var(--font-display)' }}>Add Collaborator</h2>
                         {error && <div className="auth-error" style={{ marginBottom: 'var(--space-4)' }}>{error}</div>}
 
-                        <div className="input-group" style={{ marginBottom: 'var(--space-4)' }}>
+                        <div className="input-group" style={{ marginBottom: 'var(--space-4)', position: 'relative' }}>
                             <label className="input-label">Search Users</label>
                             <input
                                 className="input-field"

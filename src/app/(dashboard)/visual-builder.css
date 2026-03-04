@@ -82,47 +82,144 @@
 /* ---------- Block Interactions ---------- */
 .vb-block {
     position: relative;
-    cursor: pointer;
-    transition: outline 0.1s ease;
+    cursor: auto;
+    transition: all 0.2s ease;
+    padding: 2px 0;
 }
 
-.vb-block.active {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
+/* Word Mode Refinements: Unified Flow */
+.vb-mode-word .vb-block {
+    margin-bottom: 0.5rem;
+    border: 1px solid transparent;
 }
 
-.vb-block-handle {
+.vb-mode-word .vb-block:hover {
+    border-color: var(--border-subtle);
+}
+
+.vb-mode-word .vb-block.active {
+    outline: none;
+    background: var(--bg-secondary-opacity);
+}
+
+/* Block Actions (Trash/Settings) */
+.vb-block-actions {
     position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--primary);
-    color: white;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: var(--radius-sm);
-    display: none;
+    right: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
     z-index: 10;
 }
 
-.vb-block.active .vb-block-handle {
-    display: block;
+.vb-block:hover .vb-block-actions {
+    opacity: 1;
 }
 
-/* Resizer Handles (Canva Mode) */
-.vb-resizer {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: white;
-    border: 2px solid var(--primary);
+.vb-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
+}
+
+.vb-action-btn:hover {
+    background: var(--bg-tertiary);
+    transform: scale(1.1);
+}
+
+.vb-action-btn.delete:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* Premium Audio Block */
+.vb-audio-block.premium {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.audio-visualizer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+}
+
+.pulse-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
     border-radius: 50%;
-    z-index: 15;
-    display: none;
+    animation: beacon 1.5s infinite;
 }
 
-.vb-block.active .vb-resizer {
+@keyframes beacon {
+    0% {
+        box-shadow: 0 0 0 0 var(--primary-opacity);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px transparent;
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+/* Image Container */
+.vb-image-container {
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    transition: transform 0.3s;
+}
+
+.vb-image {
     display: block;
+    max-width: 100%;
+    transition: transform 0.5s;
+}
+
+.vb-block.active .vb-image-container {
+    transform: scale(1.01);
+}
+
+/* Sticker Styles */
+.vb-sticker-container {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-2);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.vb-sticker {
+    user-select: none;
+    pointer-events: none;
+}
+
+.vb-block:hover .vb-sticker-container {
+    transform: scale(1.1) rotate(2deg);
 }
 
 /* Member Cursor (Multiplayer) */

@@ -11,13 +11,24 @@ export interface JwtPayload {
 }
 
 export function generateToken(payload: JwtPayload): string {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN as any });
 }
 
 export function verifyToken(token: string): JwtPayload | null {
+    if (!JWT_SECRET || JWT_SECRET === 'fallback-secret') {
+        console.warn('[Auth] Warning: Using fallback JWT secret. Check environment variables.');
+    }
+
     try {
         return jwt.verify(token, JWT_SECRET) as JwtPayload;
-    } catch {
+    } catch (err: any) {
+        if (err.name === 'TokenExpiredError') {
+            console.error('[Auth] Token expired at:', err.expiredAt);
+        } else if (err.name === 'JsonWebTokenError') {
+            console.error('[Auth] Invalid token signature/format:', err.message);
+        } else {
+            console.error('[Auth] JWT Verification failed:', err.message);
+        }
         return null;
     }
 }

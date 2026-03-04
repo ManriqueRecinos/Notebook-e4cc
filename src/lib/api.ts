@@ -23,7 +23,7 @@ export async function api<T = unknown>(endpoint: string, options: FetchOptions =
     };
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('lexora-token') : null;
-    if (token) {
+    if (token && token !== 'null' && token !== 'undefined') {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
@@ -35,6 +35,9 @@ export async function api<T = unknown>(endpoint: string, options: FetchOptions =
 
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        if (res.status === 401 && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('lexora-unauthorized'));
+        }
         throw new Error(err.error || `HTTP ${res.status}`);
     }
 
